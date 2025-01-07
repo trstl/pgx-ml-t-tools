@@ -30,6 +30,7 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import argparse
 import os
+import sys
 
 
 #%%
@@ -60,8 +61,9 @@ def create_variant_id_df(df, chrom_col, pos_col, a1_col, a2_col):
 def load_dataset(file_path, chromosome, bp_lower, bp_upper):
     # Check if the file exists
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"The file '{file_path}' does not exist. Please check the path.")
+        sys.exit(f"The file '{file_path}' was not found. Please check the path.")
         
+    # Function to check which tested delimiter correctly produces a 'chromosome' column
     def find_correct_delimiter(file_path, target_column="chromosome", delimiters=["\t", ",", "\s+"]):
         for delimiter in delimiters:
             try:
@@ -73,7 +75,7 @@ def load_dataset(file_path, chromosome, bp_lower, bp_upper):
             except Exception as e:
                 print(f"Delimiter '{delimiter}' caused an error: {e}")
         
-        print(f"None of the tested delimiters matched the column '{target_column}'.")
+        print(f"None of the tested delimiters matched the column '{target_column}', or required column '{target_column}' does not exist.")
         return None
 
     delimiter = find_correct_delimiter(file_path)
@@ -106,8 +108,7 @@ def load_dataset(file_path, chromosome, bp_lower, bp_upper):
 
 
 #%%
-def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetric=False):
-    lower, upper = base_pair_location
+def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=False):
     
     #  Add standard 'ID' column
     df_A['ID'] = create_variant_id_df(df_A, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
@@ -115,8 +116,6 @@ def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetri
     df_B['ID'] = create_variant_id_df(df_B, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
     df_B.set_index('ID', inplace=True)
     
-    
-    # Retain common only ? ####################################### (for now only correlation plot guarantees they are shared. Coloc plot could have different top variants from correlation plot)
     
     # Check if 'neg_log_10_p_value' exists, if not, calculate it
     if 'neg_log_10_p_value' not in df_A.columns:
@@ -127,6 +126,20 @@ def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetri
     
     # Reflect df_B y-values below the x-axis
     df_B['neg_log_10_p_value'] = df_B['neg_log_10_p_value'] * -1
+    
+    
+    # Retain common variants only
+    # Merge df_A and df_B based on index
+    common_indices = df_A.index.intersection(df_B.index)
+    merged_df = df_A.loc[common_indices].merge(df_B.loc[common_indices], left_index=True, right_index=True, suffixes=('_A', '_B'))
+    
+    print(f"Dataset A has {len(df_A)} variants.")
+    df_A = df_A[df_A.index.isin(common_indices)]
+    print(f"{len(df_A)} of these variants are also found in Dataset B.")
+    print(f"Dataset B has {len(df_B)} variants.")
+    df_B = df_B[df_B.index.isin(common_indices)]
+    print(f"{len(df_B)} of these variants are also found in Dataset A.")
+    
     
     # Create the figure and gridspec layout
     fig = plt.figure(figsize=(9, 9))
@@ -141,8 +154,15 @@ def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetri
     max_df_A = df_A.loc[df_A['neg_log_10_p_value'].idxmax()]
     min_df_B = df_B.loc[df_B['neg_log_10_p_value'].idxmin()]
     
-    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})")
-    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})")
+    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})", alpha=0.8)
+    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})", alpha=0.7)
+    
+    # Mark max value in df_A and min value in df_B in the other dataset's plot for comparison
+    max_df_A = df_A.loc[df_B['neg_log_10_p_value'].idxmin()]
+    min_df_B = df_B.loc[df_A['neg_log_10_p_value'].idxmax()]
+    
+    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='blue', s=35, alpha=0.7)
+    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='orange', s=35, alpha=0.8)
     
     ax1.axhline(y=0, color='black', linestyle='-', linewidth=1)  # Solid line at y=0
     
@@ -175,16 +195,14 @@ def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetri
     ####################
     
     ax2 = plt.subplot(gs[1, 1])
-    # Merge df_A and df_B based on index
-    common_indices = df_A.index.intersection(df_B.index)
-    merged_df = df_A.loc[common_indices].merge(df_B.loc[common_indices], left_index=True, right_index=True, suffixes=('_A', '_B'))
+    
     ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.9, color='purple', s=10)  # Use reflected df_B values
   
     # Add coloured points for top variants
     max_A_index = merged_df['neg_log_10_p_value_A'].idxmax()
-    ax2.scatter(merged_df.loc[max_A_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[max_A_index, 'neg_log_10_p_value_A'], color='orange', s=35)
+    ax2.scatter(merged_df.loc[max_A_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[max_A_index, 'neg_log_10_p_value_A'], color='orange', s=35, alpha=0.8)
     min_B_index = merged_df['neg_log_10_p_value_B'].idxmin()
-    ax2.scatter(merged_df.loc[min_B_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[min_B_index, 'neg_log_10_p_value_A'], color='blue', s=35)
+    ax2.scatter(merged_df.loc[min_B_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[min_B_index, 'neg_log_10_p_value_A'], color='blue', s=35, alpha=0.7)
     
     
     ax2.set_xlabel('-log10(p-value) for Dataset B')
@@ -197,9 +215,10 @@ def plot_summary_statistics(df_A, df_B, chromosome, base_pair_location, symmetri
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
     
-    # Show plot
-    plt.savefig('test.png')
-    plt.show()
+    # Save the plot as an SVG file
+    output_file = 'coloc_plot.svg'
+    plt.savefig(output_file, format='svg')
+    print(f"Plot has been saved as an SVG file: {output_file}")
     
 
 
@@ -223,8 +242,13 @@ def main():
     df_A = load_dataset(args.df_A, args.chromosome, args.lower, args.upper)
     df_B = load_dataset(args.df_B, args.chromosome, args.lower, args.upper)
     
+    # Check if DataFrames are empty
+    empty_datasets = [name for name, df in [(f'\nDataset A: ({args.df_A})', df_A), (f'\nDataset B: ({args.df_B})', df_B)] if df.empty]
+    if empty_datasets:
+        sys.exit(f"Datasets are empty with given chromosome and coordinates range: {', '.join(empty_datasets)}")
+    
     # Call the plotting function
-    plot_summary_statistics(df_A, df_B, args.chromosome, (args.lower, args.upper), args.symmetric)
+    plot_summary_statistics(df_A, df_B, args.chromosome, args.lower, args.upper, args.symmetric)
 
 if __name__ == '__main__':
     main()
