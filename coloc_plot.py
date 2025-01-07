@@ -59,6 +59,7 @@ def create_variant_id_df(df, chrom_col, pos_col, a1_col, a2_col):
 
 #%%
 def load_dataset(file_path, chromosome, bp_lower, bp_upper):
+
     # Check if the file exists
     if not os.path.exists(file_path):
         sys.exit(f"The file '{file_path}' was not found. Please check the path.")
@@ -108,7 +109,9 @@ def load_dataset(file_path, chromosome, bp_lower, bp_upper):
 
 
 #%%
-def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=False):
+def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lines, symmetric=False):
+    
+    ### Assume beta column for now ###
     
     #  Add standard 'ID' column
     df_A['ID'] = create_variant_id_df(df_A, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
@@ -147,22 +150,27 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
 
     # Left scatter plot
     ax1 = plt.subplot(gs[1, 0])
-    ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color='black', alpha=0.3, s=10)
-    ax1.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color='black', alpha=0.3, s=10)
+    ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color='black', s=1)
+    ax1.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color='black', s=1)
     
     # Mark max value in df_A and min value in df_B
     max_df_A = df_A.loc[df_A['neg_log_10_p_value'].idxmax()]
     min_df_B = df_B.loc[df_B['neg_log_10_p_value'].idxmin()]
     
-    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})", alpha=0.8)
-    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})", alpha=0.7)
+    
+    marker = '^' if max_df_A['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
+    marker = '^' if min_df_B['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
     
     # Mark max value in df_A and min value in df_B in the other dataset's plot for comparison
     max_df_A = df_A.loc[df_B['neg_log_10_p_value'].idxmin()]
     min_df_B = df_B.loc[df_A['neg_log_10_p_value'].idxmax()]
     
-    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='blue', s=35, alpha=0.7)
-    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='orange', s=35, alpha=0.8)
+    marker = '^' if max_df_A['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
+    marker = '^' if min_df_B['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
     
     ax1.axhline(y=0, color='black', linestyle='-', linewidth=1)  # Solid line at y=0
     
@@ -187,7 +195,15 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
     ax1.set_ylabel('log10(p-value)     -log10(p-value) ')
     ax1.yaxis.set_label_coords(-0.1, y_label_pos)
     #ax1.set_title(f'Colocalisation plot at Chromosome {chromosome} between {lower} and {upper} bp')
-    ax1.legend(loc=(0, -0.4),  fontsize=8,)
+    
+    
+    # Draw lines defined in arguments
+    if x_lines != None:
+        for bp_value in x_lines:
+            ax1.axvline(x=bp_value, color='black', linestyle='--', linewidth=1)
+    if y_lines != None:
+        for neg_log10_p_value in y_lines:
+            ax1.axhline(y=neg_log10_p_value, color='black', linestyle='--', linewidth=1)    
     
     
     ####################
@@ -196,13 +212,13 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
     
     ax2 = plt.subplot(gs[1, 1])
     
-    ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.4, color='purple', s=10)  # Use reflected df_B values
+    ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.4, color='purple', s=5)  # Use reflected df_B values
   
     # Add coloured points for top variants
     max_A_index = merged_df['neg_log_10_p_value_A'].idxmax()
-    ax2.scatter(merged_df.loc[max_A_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[max_A_index, 'neg_log_10_p_value_A'], color='orange', s=35, alpha=0.8)
+    ax2.scatter(merged_df.loc[max_A_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[max_A_index, 'neg_log_10_p_value_A'], color='orange', s=35, alpha=0.8, label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})")
     min_B_index = merged_df['neg_log_10_p_value_B'].idxmin()
-    ax2.scatter(merged_df.loc[min_B_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[min_B_index, 'neg_log_10_p_value_A'], color='blue', s=35, alpha=0.7)
+    ax2.scatter(merged_df.loc[min_B_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[min_B_index, 'neg_log_10_p_value_A'], color='blue', s=35, alpha=0.7, label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})")
     
     
     ax2.set_xlabel('-log10(p-value) for Dataset B')
@@ -214,6 +230,9 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
     
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
+    
+    ax2.legend(loc=(0, -0.4),  fontsize=8)
+    
     
     # Save the plot as an SVG file
     output_file = 'coloc_plot.svg'
@@ -233,7 +252,9 @@ def main():
     parser.add_argument('lower', type=int, help="Lower bound of the base pair location")
     parser.add_argument('upper', type=int, help="Upper bound of the base pair location")
     
-    # Optional argument
+    # Optional arguments
+    parser.add_argument('--x_line', nargs='+', type=int, help="Optional list of dashed vertical lines to draw (i.e., gene boundries), separated by spaces at given base pair values")
+    parser.add_argument('--y_line', nargs='+', type=int, help="Optional list of dashed horizontal lines to draw (i.e., significance values), separated by spaces at given -log10(p-value) values")
     parser.add_argument('--symmetric', action='store_true', help="If set, y axes for both datasets will be identical")
     
     args = parser.parse_args()
@@ -248,7 +269,7 @@ def main():
         sys.exit(f"Datasets are empty with given chromosome and coordinates range: {', '.join(empty_datasets)}")
     
     # Call the plotting function
-    plot_summary_statistics(df_A, df_B, args.chromosome, args.lower, args.upper, args.symmetric)
+    plot_summary_statistics(df_A, df_B, args.chromosome, args.lower, args.upper, args.x_line, args.y_line, args.symmetric)
 
 if __name__ == '__main__':
     main()
