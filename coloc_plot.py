@@ -75,7 +75,7 @@ def load_dataset(file_path, chromosome, bp_lower, bp_upper):
             except Exception as e:
                 print(f"Delimiter '{delimiter}' caused an error: {e}")
         
-        print(f"None of the tested delimiters matched the column '{target_column}', or required column '{target_column}' does not exist.")
+        sys.exit(f"None of the tested delimiters matched the column '{target_column}', or required column '{target_column}' does not exist.")
         return None
 
     delimiter = find_correct_delimiter(file_path)
@@ -147,8 +147,8 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
 
     # Left scatter plot
     ax1 = plt.subplot(gs[1, 0])
-    ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color='black', alpha=0.9, s=10)
-    ax1.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color='black', alpha=0.9, s=10)
+    ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color='black', alpha=0.3, s=10)
+    ax1.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color='black', alpha=0.3, s=10)
     
     # Mark max value in df_A and min value in df_B
     max_df_A = df_A.loc[df_A['neg_log_10_p_value'].idxmax()]
@@ -196,7 +196,7 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, symmetric=Fals
     
     ax2 = plt.subplot(gs[1, 1])
     
-    ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.9, color='purple', s=10)  # Use reflected df_B values
+    ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.4, color='purple', s=10)  # Use reflected df_B values
   
     # Add coloured points for top variants
     max_A_index = merged_df['neg_log_10_p_value_A'].idxmax()
