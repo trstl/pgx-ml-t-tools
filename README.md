@@ -4,7 +4,7 @@ Repository to share tools made for pharmacogenomics lab that may be helpful for 
 
 
 
-## Script README
+## coloc_plot.py
 
 This script compares two genomic datasets (`df_A` and `df_B`) for a specific chromosome within a defined region of the genome. It provides various options for visualizing the data, including adding vertical and horizontal lines to highlight specific features.
 
