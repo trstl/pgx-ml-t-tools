@@ -21,7 +21,7 @@ These arguments are required to run the script.
   Path to the second dataset.
 
 - `chromosome` (str):  
-  The chromosome to filter the data by (e.g., 1, 2).
+  The chromosome to filter the data by (e.g., 1, 2, X).
 
 - `lower` (int):  
   The lower bound of the base pair location. This value defines the start of the region of interest in the genome.
