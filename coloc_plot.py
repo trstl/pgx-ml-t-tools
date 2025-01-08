@@ -2,7 +2,7 @@
 """
 Created on Mon Jan  6 11:50:34 2025 for pgx-ml-lab
 
-Colocalisation Plot
+Colocalization Plot
 
 @author: trstl
 
@@ -194,7 +194,7 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
     ax1.set_xlabel('Base Pair Location')
     ax1.set_ylabel('log10(p-value)     -log10(p-value) ')
     ax1.yaxis.set_label_coords(-0.1, y_label_pos)
-    #ax1.set_title(f'Colocalisation plot at Chromosome {chromosome} between {lower} and {upper} bp')
+    #ax1.set_title(f'Colocalization plot at Chromosome {chromosome} between {lower} and {upper} bp')
     
     
     # Draw lines defined in arguments
@@ -243,7 +243,7 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
 
 #%%
 def main():
-    parser = argparse.ArgumentParser(description="Plot summary statistics from two datasets for colocalisation.")
+    parser = argparse.ArgumentParser(description="Plot summary statistics from two datasets for colocalization.")
     
     # Positional arguments
     parser.add_argument('df_A', type=str, help="Path to the first dataset")
