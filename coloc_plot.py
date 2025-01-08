@@ -158,18 +158,18 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
     min_df_B = df_B.loc[df_B['neg_log_10_p_value'].idxmin()]
     
     
-    marker = '^' if max_df_A['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    marker = '^' if max_df_A['beta'] > 0 else ('v' if max_df_A['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
     ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
-    marker = '^' if min_df_B['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    marker = '^' if min_df_B['beta'] > 0 else ('v' if min_df_B['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
     ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
     
     # Mark max value in df_A and min value in df_B in the other dataset's plot for comparison
     max_df_A = df_A.loc[df_B['neg_log_10_p_value'].idxmin()]
     min_df_B = df_B.loc[df_A['neg_log_10_p_value'].idxmax()]
     
-    marker = '^' if max_df_A['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    marker = '^' if max_df_A['beta'] > 0 else ('v' if max_df_A['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
     ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
-    marker = '^' if min_df_B['beta'] > 0 else 'v' # Check if beta is positive or negative for the specific point
+    marker = '^' if min_df_B['beta'] > 0 else ('v' if min_df_B['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
     ax1.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
     
     ax1.axhline(y=0, color='black', linestyle='-', linewidth=1)  # Solid line at y=0
@@ -255,7 +255,7 @@ def main():
     # Optional arguments
     parser.add_argument('--x_line', nargs='+', type=int, help="Optional list of dashed vertical lines to draw (i.e., gene boundries), separated by spaces at given base pair values")
     parser.add_argument('--y_line', nargs='+', type=int, help="Optional list of dashed horizontal lines to draw (i.e., significance values), separated by spaces at given -log10(p-value) values")
-    parser.add_argument('--symmetric', action='store_true', help="If set, y axes for both datasets will be identical")
+    parser.add_argument('--symmetric', action='store_true', help="If set, y axes for both datasets will be identical (i.e., centers y=0)")
     
     args = parser.parse_args()
     
