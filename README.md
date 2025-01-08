@@ -6,7 +6,7 @@ Repository to share tools made for pharmacogenomics lab that may be helpful for 
 
 ## coloc_plot.py
 
-This script compares two genomic datasets (`df_A` and `df_B`) for a specific chromosome within a defined region of the genome. It provides various options for visualizing the data, including adding vertical and horizontal lines to highlight specific features.
+This tool will generate a colocalization plot; a type of plot that displays the associations of local variants to two different outcomes.
 
 ### Arguments
 
