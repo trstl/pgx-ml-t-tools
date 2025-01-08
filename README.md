@@ -47,9 +47,11 @@ These arguments are optional and can be included for additional customization.
 ### Example Usage
 
 ```bash
-python coloc_plot.py dataset_A.csv dataset_B.csv 1 100000 200000 --x_line 100000 150000 --y_line 1 2 --symmetric
+python coloc_plot.py dataset_A.h.tsv.gz dataset_B.h.tsv.gz 10 45274176 45546119 --x_line 45374176 45446119
 ```
 
 ### Example Output
 
-![image](https://github.com/user-attachments/assets/478d0b58-dd31-4f6b-a27e-099968f1f26c)
+![image](https://github.com/user-attachments/assets/3c095a72-2c0d-4f0a-8000-3d2de8f05fe6)
+
+Where the top axis corresponds to dataset A (appearing first in the command) and the bottom axis corresponds to dataset B (appearing second in the command). The directions of the triangles (pointing up or down) corresponds to the direction of the beta of the top variants (i.e., pointing up for a positive beta).
