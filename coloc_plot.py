@@ -32,7 +32,7 @@ import argparse
 import os
 import sys
 
-from matplotlib.ticker import MaxNLocator, FuncFormatter, ScalarFormatter
+from matplotlib.ticker import MaxNLocator, ScalarFormatter
 
 
 #%%
@@ -196,7 +196,7 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
         ax1.set_ylim(-max_y * 1.1, max_y * 1.1)
         ax1.set_yticks(np.round(np.linspace(0, max_y, 5), 1)) # 5 ticks
         axB.set_ylim(-max_y * 1.1, max_y * 1.1)
-        axB.set_yticks(np.round(np.linspace(max_y, 0, 5), 1))
+        axB.set_yticks(np.round(np.linspace(-max_y, 0, 5), 1))
     else:
 
         ax1.set_ylim(-max_A * 1.1, max_A * 1.1)
@@ -216,8 +216,8 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
     axB.spines['bottom'].set_visible(False)
     
     ax1.set_xlabel('Base Pair Location')
-    ax1.set_ylabel(r"$-\log_{10}(p)$")
-    axB.set_ylabel(r"$\log_{10}(p)$", rotation=90)
+    ax1.set_ylabel(r"$-\log_{10}(p)$", labelpad=5)
+    axB.set_ylabel(r"$\log_{10}(p)$", labelpad=15, rotation=-90)
     
     
     # Generate tick positions within the range
@@ -260,8 +260,12 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
     ax2.set_ylabel(r"$-\log_{10}(p)$ for Dataset A")
     #ax2.set_title('Correlation between Datasets A and B')
     
-    ax2.set_ylim(ymin=0, ymax=max_y + 0.5)
-    ax2.set_xlim(xmin=0, xmax=max_y + 0.5)
+    if symmetric:
+        ax2.set_ylim(ymin=0, ymax=max_y * 1.1)
+        ax2.set_xlim(xmin=0, xmax=max_y * 1.1)
+    else:
+        ax2.set_ylim(ymin=0, ymax=max_A * 1.1)
+        ax2.set_xlim(xmin=0, xmax=abs(min_B) * 1.1)
     
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
