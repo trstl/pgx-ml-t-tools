@@ -113,176 +113,181 @@ def load_dataset(file_path, chromosome, bp_lower, bp_upper):
 #%%
 def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lines, threshold, symmetric=False, filename=None):
     
-    #  Add standard 'ID' column
-    df_A['ID'] = create_variant_id_df(df_A, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
-    df_A.set_index('ID', inplace=True)
-    df_B['ID'] = create_variant_id_df(df_B, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
-    df_B.set_index('ID', inplace=True)
-    
-    
-    # Check if 'neg_log_10_p_value' exists, if not, calculate it
-    if 'neg_log_10_p_value' not in df_A.columns:
-        df_A['neg_log_10_p_value'] = -np.log10(df_A['p_value'])
-    
-    if 'neg_log_10_p_value' not in df_B.columns:
-        df_B['neg_log_10_p_value'] = -np.log10(df_B['p_value'])
-    
+    # Add standard 'ID' column and set it as the index
+    for df in (df_A, df_B):
+        df['ID'] = create_variant_id_df(df, 'chromosome', 'base_pair_location', 'effect_allele', 'other_allele')
+        df.set_index('ID', inplace=True)
+
+    # Calculate 'neg_log_10_p_value' if it doesn't exist
+    for df in (df_A, df_B):
+        if 'neg_log_10_p_value' not in df.columns:
+            df['neg_log_10_p_value'] = -np.log10(df['p_value'])
+
     # Reflect df_B y-values below the x-axis
-    df_B['neg_log_10_p_value'] = df_B['neg_log_10_p_value'] * -1
-    
-    
+    df_B['neg_log_10_p_value'] *= -1
+
     # Retain common variants only
-    # Merge df_A and df_B based on index
     common_indices = df_A.index.intersection(df_B.index)
-    merged_df = df_A.loc[common_indices].merge(df_B.loc[common_indices], left_index=True, right_index=True, suffixes=('_A', '_B'))
-    
-    print(f"Dataset A has {len(df_A)} variants.")
-    df_A = df_A[df_A.index.isin(common_indices)]
-    print(f"{len(df_A)} of these variants are also found in Dataset B.")
-    print(f"Dataset B has {len(df_B)} variants.")
-    df_B = df_B[df_B.index.isin(common_indices)]
-    print(f"{len(df_B)} of these variants are also found in Dataset A.")
-    
-    # TEMP LINES TO WORK WITH AUTO EQTLGEN ***********************************************
-    #df_B['beta'] = df_B['Zscore'].apply(lambda x: 1 if  x > 0 else -1)
-    
-    
+    df_A = df_A.loc[common_indices]
+    df_B = df_B.loc[common_indices]
+
+    # Merge datasets
+    merged_df = df_A.merge(df_B, left_index=True, right_index=True, suffixes=('_A', '_B'))
+
+    # Log variant counts
+    print(f"{len(df_A)} common variants retained.")
+     
     # Create the figure and gridspec layout
     fig = plt.figure(figsize=(9, 9))
     gs = gridspec.GridSpec(3, 2, width_ratios=[1.5, 1], height_ratios=[1, 2, 1], wspace=0.5)
-    
-    
-    # Left scatter plot
     ax1 = plt.subplot(gs[1, 0])
     axB = ax1.twinx()
-    if threshold != None:
-        # Create a color list based on the condition
-        colors = ['red' if df_B.loc[idx, 'neg_log_10_p_value'] <= threshold * -1 else 'black' for idx in df_A.index]
-        ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color=colors, s=1)
-        colors = ['red' if df_A.loc[idx, 'neg_log_10_p_value'] >= threshold else 'black' for idx in df_B.index]
-        axB.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color=colors, s=1)
+    
+    # Color points red if it is significant in the other dataset
+    if threshold is not None:
+        colors_A = [
+            'red' if df_B.loc[idx, 'neg_log_10_p_value'] <= -threshold else 'black'
+            for idx in df_A.index
+        ]
+        ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color=colors_A, s=1)
+
+        colors_B = [
+            'red' if df_A.loc[idx, 'neg_log_10_p_value'] >= threshold else 'black'
+            for idx in df_B.index
+        ]
+        axB.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color=colors_B, s=1)
     else:
         ax1.scatter(df_A['base_pair_location'], df_A['neg_log_10_p_value'], color='black', s=1)
         axB.scatter(df_B['base_pair_location'], df_B['neg_log_10_p_value'], color='black', s=1)
-    
-    # Mark max value in df_A and min value in df_B
+
+    # Highlight max value in df_A and min value in df_B with triangles
+    def highlight_point(df, axis, color, marker):
+        axis.scatter(
+            df['base_pair_location'], df['neg_log_10_p_value'],
+            color=color, s=35, alpha=0.8, marker=marker
+        )
+
     max_df_A = df_A.loc[df_A['neg_log_10_p_value'].idxmax()]
     min_df_B = df_B.loc[df_B['neg_log_10_p_value'].idxmin()]
-    
-    
-    marker = '^' if max_df_A['beta'] > 0 else ('v' if max_df_A['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
-    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
-    marker = '^' if min_df_B['beta'] > 0 else ('v' if min_df_B['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
-    axB.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
-    
-    # Mark max value in df_A and min value in df_B in the other dataset's plot for comparison
-    max_df_A = df_A.loc[df_B['neg_log_10_p_value'].idxmin()]
-    min_df_B = df_B.loc[df_A['neg_log_10_p_value'].idxmax()]
-    
-    marker = '^' if max_df_A['beta'] > 0 else ('v' if max_df_A['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
-    ax1.scatter(max_df_A['base_pair_location'], max_df_A['neg_log_10_p_value'], color='blue', s=35, alpha=0.7, marker=marker)
-    marker = '^' if min_df_B['beta'] > 0 else ('v' if min_df_B['beta'] < 0 else 'o') # Check if beta is positive or negative for the specific point
-    axB.scatter(min_df_B['base_pair_location'], min_df_B['neg_log_10_p_value'], color='orange', s=35, alpha=0.8, marker=marker)
-    
-    ax1.axhline(y=0, color='black', linestyle='-', linewidth=1)  # Solid line at y=0
-    
-    
-    # Adjust y-axis limits based on symmetric flag
-    # Calculate maximum positive and minimum negative values
-    max_A = df_A['neg_log_10_p_value'].max()  # Maximum positive value
-    min_B = df_B['neg_log_10_p_value'].min()  # Minimum negative value
+
+    highlight_point(max_df_A, ax1, 'orange', '^' if max_df_A['beta'] > 0 else 'v' if max_df_A['beta'] < 0 else 'o')
+    highlight_point(min_df_B, axB, 'blue', '^' if min_df_B['beta'] > 0 else 'v' if min_df_B['beta'] < 0 else 'o')
+
+    # Mark reciprocal points for comparison
+    max_in_B = df_A.loc[df_B['neg_log_10_p_value'].idxmin()]
+    min_in_A = df_B.loc[df_A['neg_log_10_p_value'].idxmax()]
+
+    highlight_point(max_in_B, ax1, 'blue', '^' if max_in_B['beta'] > 0 else 'v' if max_in_B['beta'] < 0 else 'o')
+    highlight_point(min_in_A, axB, 'orange', '^' if min_in_A['beta'] > 0 else 'v' if min_in_A['beta'] < 0 else 'o')
+
+    # Add horizontal line at y=0
+    ax1.axhline(y=0, color='black', linestyle='-', linewidth=1)
+
+    # Adjust y-axis limits
+    max_A = df_A['neg_log_10_p_value'].max()
+    min_B = df_B['neg_log_10_p_value'].min()
     max_y = max(abs(max_A), abs(min_B))
+
     if symmetric:
         ax1.set_ylim(-max_y * 1.1, max_y * 1.1)
-        ax1.set_yticks(np.round(np.linspace(0, max_y, 5), 1)) # 5 ticks
+        ax1.set_yticks(np.round(np.linspace(0, max_y, 5), 1))
         axB.set_ylim(-max_y * 1.1, max_y * 1.1)
         axB.set_yticks(np.round(np.linspace(-max_y, 0, 5), 1))
     else:
-
         ax1.set_ylim(-max_A * 1.1, max_A * 1.1)
         ax1.set_yticks(np.round(np.linspace(0, max_A, 5), 1))
         axB.set_ylim(min_B * 1.1, -min_B * 1.1)
         axB.set_yticks(np.round(np.linspace(min_B, 0, 5), 1))
-        
 
+    # Adjust tick parameters
     ax1.tick_params(axis='y', labelsize=8)
     axB.tick_params(axis='y', labelsize=8)
-    
+
     # Remove borders for aesthetics
-    ax1.spines['top'].set_visible(False)
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['bottom'].set_visible(False)
-    axB.spines['top'].set_visible(False)
-    axB.spines['bottom'].set_visible(False)
-    
+    for spine in ['top', 'right', 'bottom']:
+        ax1.spines[spine].set_visible(False)
+        axB.spines[spine].set_visible(False)
+
+    # Set labels
     ax1.set_xlabel('Base Pair Location')
     ax1.set_ylabel(r"$-\log_{10}(p)$", labelpad=5)
     axB.set_ylabel(r"$\log_{10}(p)$", labelpad=15, rotation=-90)
-    
-    
-    # Generate tick positions within the range
+
+    # Set x-axis limits and format ticks
     ax1.set_xlim(lower, upper)
-    
-    # Use MaxNLocator to set 5 ticks
     ax1.xaxis.set_major_locator(MaxNLocator(nbins=7))
     ax1.tick_params(axis='x', labelsize=8)
     ax1.xaxis.set_major_formatter(ScalarFormatter())
-    
-    # Draw lines defined in arguments
-    if x_lines != None:
+
+    # Add vertical and horizontal guide lines
+    if x_lines:
         for bp_value in x_lines:
             ax1.axvline(x=bp_value, color='black', linestyle='--', linewidth=0.5)
-    if y_lines != None:
+
+    if y_lines:
         for neg_log10_p_value in y_lines:
-            if neg_log10_p_value < 0:
-                axB.axhline(y=neg_log10_p_value, color='black', linestyle='--', linewidth=0.5)
-            else:
-                ax1.axhline(y=neg_log10_p_value, color='black', linestyle='--', linewidth=0.5)
+            axis = axB if neg_log10_p_value < 0 else ax1
+            axis.axhline(y=neg_log10_p_value, color='black', linestyle='--', linewidth=0.5)
             
-    
     
     ####################
     # Correlation plot #
     ####################
     
+    # Scatter plot for correlation
     ax2 = plt.subplot(gs[1, 1])
-    
-    ax2.scatter(merged_df['neg_log_10_p_value_B'] * -1, merged_df['neg_log_10_p_value_A'], alpha=0.4, color='purple', s=5)  # Use reflected df_B values
-  
-    # Add coloured points for top variants
-    max_A_index = merged_df['neg_log_10_p_value_A'].idxmax()
-    ax2.scatter(merged_df.loc[max_A_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[max_A_index, 'neg_log_10_p_value_A'], color='orange', s=35, alpha=0.8, label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})")
-    min_B_index = merged_df['neg_log_10_p_value_B'].idxmin()
-    ax2.scatter(merged_df.loc[min_B_index, 'neg_log_10_p_value_B'] * -1, merged_df.loc[min_B_index, 'neg_log_10_p_value_A'], color='blue', s=35, alpha=0.7, label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})")
-    
-    
+    ax2.scatter(
+        -merged_df['neg_log_10_p_value_B'], merged_df['neg_log_10_p_value_A'],
+        alpha=0.4, color='purple', s=5
+    )
+
+    # Highlight top variants
+    max_A_idx = merged_df['neg_log_10_p_value_A'].idxmax()
+    min_B_idx = merged_df['neg_log_10_p_value_B'].idxmin()
+
+    ax2.scatter(
+        -merged_df.loc[max_A_idx, 'neg_log_10_p_value_B'],
+        merged_df.loc[max_A_idx, 'neg_log_10_p_value_A'],
+        color='orange', s=35, alpha=0.8,
+        label=f"Top variant for dataset A ({df_A['neg_log_10_p_value'].idxmax()})"
+    )
+
+    ax2.scatter(
+        -merged_df.loc[min_B_idx, 'neg_log_10_p_value_B'],
+        merged_df.loc[min_B_idx, 'neg_log_10_p_value_A'],
+        color='blue', s=35, alpha=0.7,
+        label=f"Top variant for dataset B ({df_B['neg_log_10_p_value'].idxmin()})"
+    )
+
+    # Set axis labels
     ax2.set_xlabel(r"$-\log_{10}(p)$ for Dataset B")
     ax2.set_ylabel(r"$-\log_{10}(p)$ for Dataset A")
-    #ax2.set_title('Correlation between Datasets A and B')
-    
+
+    # Adjust axis limits
+    max_A = merged_df['neg_log_10_p_value_A'].max()
+    min_B = merged_df['neg_log_10_p_value_B'].min()
+    max_y = max_A if symmetric else abs(min_B)
+
     if symmetric:
-        ax2.set_ylim(ymin=0, ymax=max_y * 1.1)
-        ax2.set_xlim(xmin=0, xmax=max_y * 1.1)
+        ax2.set_xlim(0, max_y * 1.1)
+        ax2.set_ylim(0, max_y * 1.1)
     else:
-        ax2.set_ylim(ymin=0, ymax=max_A * 1.1)
-        ax2.set_xlim(xmin=0, xmax=abs(min_B) * 1.1)
-    
+        ax2.set_xlim(0, abs(min_B) * 1.1)
+        ax2.set_ylim(0, max_A * 1.1)
+
+    # Remove top and right spines
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
-    
-    ax2.legend(loc=(0, -0.4),  fontsize=8)
-    
-    
-    # Save the plot as an SVG file
-    if filename != None:
-        output_file = f'plots/{filename}.svg'
-    else:
-        output_file = 'plots/coloc_plot.svg'
+
+    # Add legend
+    ax2.legend(loc=(0, -0.4), fontsize=8)
+
+    # Save the plot
+    output_file = f"plots/{filename or 'coloc_plot'}.svg"
     plt.savefig(output_file, format='svg')
-    print(f"Plot has been saved as an SVG file: {output_file} in subfolder plots/")
+    print(f"Plot saved as: {output_file}")
+
     
-
-
 #%%
 def main():
     parser = argparse.ArgumentParser(description="Plot summary statistics from two datasets for colocalization.")
