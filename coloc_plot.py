@@ -283,6 +283,7 @@ def plot_summary_statistics(df_A, df_B, chromosome, lower, upper, x_lines, y_lin
     ax2.legend(loc=(0, -0.4), fontsize=8)
 
     # Save the plot
+    os.makedirs("plots", exist_ok=True)
     output_file = f"plots/{filename or 'coloc_plot'}.svg"
     plt.savefig(output_file, format='svg')
     print(f"Plot saved as: {output_file}")
